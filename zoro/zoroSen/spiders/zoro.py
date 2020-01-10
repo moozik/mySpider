@@ -188,11 +188,14 @@ class ZoroSpider(scrapy.Spider):
 		url = re.findall('"url": "(/[^/]+/i/G\d+/)"', scriptCode)
 		dropship = re.findall('"dropship": "([A-Z0-9]*?)"', scriptCode)
 		brand = re.findall('"brand": "(.*?)"', scriptCode)
-		price = re.findall('"price": "([\d\.]+)"', scriptCode)
+		price = re.findall('"price": "([\d\.]*?)"', scriptCode)
 		variantid = re.findall('"id": "(G\d+)"', scriptCode)
 		# name = re.findall('"name": "(.*?)"', scriptCode)
 		mfr_no = re.findall('"mfrNo": "(.*?)"', scriptCode)
-
+		if len(price) != len(url):
+			print('price length erong:',response.url)
+			logging.info(response.url)
+			logging.info(scriptCode)
 		ret = []
 		# for variantid in variantList:
 		for i in range(len(variantid)):
@@ -248,14 +251,23 @@ class ZoroSpider(scrapy.Spider):
 			item['brand'] = response.meta['o'][2]
 			item['name'] = self.validate(response.xpath(
 				'//*[@id="part_content"]/div/div[1]/div[2]/h1/text()').extract_first())
+			if item['name'] == '':
+				print('empty name:', response.url)
+				return
 			item['dcs'] = response.meta['o'][6]
 			item['zoro_sku'] = response.meta['o'][4]
+			if item['zoro_sku'] == '':
+				print('empty zoro_sku:', response.url)
+				return
 			# item['mfr'] = self.validate(response.xpath(
 			# 	'//*[@id="part_content"]/div/div[1]/ul/li[2]/span/text()').extract_first())
 			item['mfr'] = response.meta['o'][5]
 			# item['selling_price'] = self.validate(response.xpath(
 			# 	'//*[@id="part_content"]/div/div[1]/div[4]/h3/span/text()').extract_first())
 			item['selling_price'] = response.meta['o'][3]
+			if item['selling_price'] == '':
+				print('empty selling_price:', response.url)
+				return
 			
 			# "dropship": 
 			# TP = Drop ship 第三方仓库
