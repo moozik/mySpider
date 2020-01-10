@@ -1,0 +1,19 @@
+scrapy
+scrapy startproject name
+
+windows command set proxy
+set http_proxy=http://127.0.0.1:1080
+set https_proxy=http://127.0.0.1:1080
+
+run spider
+scrapy crawl zoro --logfile=log.log --loglevel=WARNING
+nohup scrapy3 crawl zoro --logfile=log.log --loglevel=WARNING &
+nohup scrapy3 crawl zoro --logfile=log.log --loglevel=WARNING > output.log &
+
+debug spider
+scrapy crawl zoro --loglevel=DEBUG
+scrapy crawl zoro --logfile=log.log --loglevel=DEBUG > output.txt
+scrapy shell https://www.jd.com/
+
+python3 http server
+nohup python -m http.server 8090 &
