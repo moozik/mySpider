@@ -19,8 +19,7 @@ class ZorosenItem(scrapy.Item):
     selling_price = Field()
     in_stock = Field()
     dcs = Field()
-    # shipping_time = Field()
-    # shipping_free = Field()
+    minOrderQuantity = Field()
 
     image1 = Field()
     image2 = Field()

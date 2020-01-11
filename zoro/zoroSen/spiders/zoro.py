@@ -33,6 +33,7 @@ class ZoroSpider(scrapy.Spider):
 		'/hand-tools/c/10/',
 		'/knobs-handles-workholding-machine-tool-accessories/c/8/',
 		'/power-tools-and-accessories/c/11/',
+
 		'/raw-materials/c/37/',
 		'/fans-hvac-equipment/c/30/',
 		'/pipes-valves-fittings/c/33/',
@@ -121,8 +122,9 @@ class ZoroSpider(scrapy.Spider):
 			'//li[@class="sub-menu__item"]//a/@href').extract()
 		# i=0
 		for kind in kind_list:
-			if kind in self.allkind and self.allkind.index(kind) >= 10:
-				continue
+			# if kind in self.allkind and self.allkind.index(kind) < 10:
+			# 	continue
+			print('parse:', kind)
 			kind = self.domain + kind
 			yield scrapy.Request(url=kind, callback=self.parse_block)
 			# i+=1	
@@ -141,6 +143,7 @@ class ZoroSpider(scrapy.Spider):
 			block_list = response.xpath(
 				'//div[@class="container cms-container"]/div/div/div/h4/a/@href').extract()
 		for block in block_list:
+			print('parse_block:', block)
 			# if block.rstrip('/') not in self.catePage:
 			# 	continue
 			# print(block)
@@ -185,11 +188,17 @@ class ZoroSpider(scrapy.Spider):
 
 		scriptCode = response.xpath('//body//script[1]/text()').extract_first()
 
+		# 链接
 		url = re.findall('"url": "(/[^/]+/i/G\d+/)"', scriptCode)
+		# 仓库
 		dropship = re.findall('"dropship": "([A-Z0-9]*?)"', scriptCode)
 		brand = re.findall('"brand": "(.*?)"', scriptCode)
 		price = re.findall('"price": "([\d\.]*?)"', scriptCode)
+		# skuid
 		variantid = re.findall('"id": "(G\d+)"', scriptCode)
+		# 最少购买数量
+		minOrderQuantity = re.findall('"minOrderQuantity": (\d+)', scriptCode)
+
 		# name = re.findall('"name": "(.*?)"', scriptCode)
 		mfr_no = re.findall('"mfrNo": "(.*?)"', scriptCode)
 		if len(price) != len(url):
@@ -208,7 +217,8 @@ class ZoroSpider(scrapy.Spider):
 				brand[i],
 				price[i],
 				variantid[i],
-				mfr_no[i]
+				mfr_no[i],
+				minOrderQuantity[i]
 			])
 		if ret == []:
 			return
@@ -218,8 +228,11 @@ class ZoroSpider(scrapy.Spider):
 		# avlResponse = scrapy.Request(url=self.domain + '/avl/', method="POST", formdata=postData)
 		#jsonList = scrapy.http.JsonRequest(url='https://www.zoro.com/avl/',callback=self.parse_json, method="POST", body=postData)
 		# avlResponse = scrapy.Request(url='https://www.zoro.com/avl/', method="POST", body=postData, headers={'Content-Type': 'application/json'})
-		jsonList = requests.post('https://www.zoro.com/avl/',data=postData).json()
-
+		r = requests.post('https://www.zoro.com/avl/', data=postData)
+		if r.status_code != 200 or r.text.strip() == '':
+			r = requests.post('https://www.zoro.com/avl/', data=postData)
+		jsonList = r.json()
+		
 		for item in ret:
 			# 拼接商品详情页链接
 			productUrl = self.domain + item[0]
@@ -227,9 +240,6 @@ class ZoroSpider(scrapy.Spider):
 			item.append(jsonList[item[4]][2])
 			yield scrapy.Request(url=productUrl, callback=self.parse_product, meta={'o':item})
 	
-	def parse_json(self, response):
-		return json.loads(response.text)
-
 	# 商品详情页
 	# G0024175 R
 	# G5398662 TM
@@ -242,9 +252,9 @@ class ZoroSpider(scrapy.Spider):
 	def parse_product(self, response):
 		try:
 			# 价格下带有标识的商品忽略
-			product_warning = response.xpath('//*[@id="part_content"]/div/div[1]/div[4]/p').extract_first()
-			if product_warning != None:
-				return
+			# product_warning = response.xpath('//*[@id="part_content"]/div/div[1]/div[4]/p').extract_first()
+			# if product_warning != None:
+			# 	return
 			item = ZorosenItem()
 			# item['brand'] = self.validate(response.xpath(
 			# 	'//a[@data-za="product-brand-name"]/text()').extract_first())
@@ -254,7 +264,8 @@ class ZoroSpider(scrapy.Spider):
 			if item['name'] == '':
 				print('empty name:', response.url)
 				return
-			item['dcs'] = response.meta['o'][6]
+			item['dcs'] = response.meta['o'][7]
+			item['minOrderQuantity'] = response.meta['o'][6]
 			item['zoro_sku'] = response.meta['o'][4]
 			if item['zoro_sku'] == '':
 				print('empty zoro_sku:', response.url)

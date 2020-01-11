@@ -17,3 +17,9 @@ scrapy shell https://www.jd.com/
 
 python3 http server
 nohup python -m http.server 8090 &
+
+get not match row total
+cat zoro.csv|grep -cv ',1,'
+
+get some not match row
+cat zoro.csv|grep -v ',1,'|head
