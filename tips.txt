@@ -16,7 +16,7 @@ scrapy crawl zoro --logfile=log.log --loglevel=DEBUG > output.txt
 scrapy shell https://www.jd.com/
 
 python3 http server
-nohup python -m http.server 8090 &
+python -m http.server 8090
 
 get not match row total
 cat zoro.csv|grep -cv ',1,'

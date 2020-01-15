@@ -16,9 +16,11 @@ from html import unescape
 # from StringIO import StringIO
 from io import StringIO
 import requests
-
+import errorlog
 
 class ZoroSpider(scrapy.Spider):
+	def __init__(self):
+		self.error_page = errorlog.errorPage()
 	name = 'zoro'
 	domain = 'https://www.zoro.com'
 	start_urls = ['https://www.zoro.com/']
@@ -33,7 +35,6 @@ class ZoroSpider(scrapy.Spider):
 		'/hand-tools/c/10/',
 		'/knobs-handles-workholding-machine-tool-accessories/c/8/',
 		'/power-tools-and-accessories/c/11/',
-
 		'/raw-materials/c/37/',
 		'/fans-hvac-equipment/c/30/',
 		'/pipes-valves-fittings/c/33/',
@@ -114,7 +115,8 @@ class ZoroSpider(scrapy.Spider):
 	def parse(self, response):
 
 		#数据修复
-		# for itemUrl in self.pages:
+		# for itemUrl in self.error_page:
+		# 	print(itemUrl)
 		# 	yield scrapy.Request(url=itemUrl, callback=self.parse_list)
 		# return
 		# kind_list = response.xpath('//div[@class="category-level-0-box-group"]//a/@href').extract()
@@ -203,8 +205,6 @@ class ZoroSpider(scrapy.Spider):
 		mfr_no = re.findall('"mfrNo": "(.*?)"', scriptCode)
 		if len(price) != len(url):
 			print('price length erong:',response.url)
-			logging.info(response.url)
-			logging.info(scriptCode)
 		ret = []
 		# for variantid in variantList:
 		for i in range(len(variantid)):
