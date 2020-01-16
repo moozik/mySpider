@@ -12,7 +12,6 @@ class zoro_amazon:
         self.zoroSession.proxies = {
             'https': 'http://127.0.0.1:1080'
         }
-
         self.amazonSession = requests.Session()
         # https://www.amazon.com/gp/delivery/ajax/address-change.html
         self.amazonSession.headers = {
@@ -23,21 +22,24 @@ class zoro_amazon:
         self.amazonSession.post(
             'https://www.amazon.com/gp/delivery/ajax/address-change.html',
             data = 'locationType=LOCATION_INPUT&zipCode=91770&storeContext=industrial&deviceType=web&pageType=OfferListing&actionSource=glow')
-        
+        self.filein = open('./filein.txt', 'r')
+        self.fileout = open('./fileout.txt', 'a')
         self.main()
 
+    def __del__(self):
+        self.filein.close()
+        self.fileout.close()
+        print('__del__')
+
     def inputData(self):
-        f = open('./filein.txt','r')
-        row = f.readline()
+        row = self.filein.readline()
         while row != '':
             yield row.strip().split("\t")
-            row = f.readline()
-        f.close()
+            row = self.filein.readline()
 
     def writeData(self, dataList):
-        f = open('./fileout.txt', 'a')
         for item in dataList:
-            f.write('{},{},{},{},{},{},{},{},{}'.format(
+            self.fileout.write('{},{},{},{},{},{},{},{},{}'.format(
                 item['zoro_id'],
                 item['rid'],
                 item['zoro_price'],
@@ -48,7 +50,6 @@ class zoro_amazon:
                 item['new_price'],
                 item['quant']
             ) + "\n")
-        f.close()
 
     def zoro(self, sku):
         ret = self.zoroSession.get('https://www.zoro.com/product/?products={}'.format(sku))
@@ -89,10 +90,15 @@ class zoro_amazon:
         jsonList = r.json()
         for item in dataList:
             item['in_stock'] = float(jsonList[item['zoro_id']][2])
-    
+            if item['in_stock'] > 0:
+                item['quant'] = 1
+
     def main(self):
         ret = []
+        count = 0
         for item in self.inputData():
+            count += 1
+            print(count, item)
             zoro_id = item[0]
             rid = item[1]
             amazon_id = item[2]
