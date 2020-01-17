@@ -10,9 +10,9 @@ class zoro_amazon:
         self.zoroSession.headers = {
             'user-agent': ua
         }
-        self.zoroSession.proxies = {
-            'https': 'http://127.0.0.1:1080'
-        }
+        #self.zoroSession.proxies = {
+        #    'https': 'http://127.0.0.1:1080'
+        #}
         self.amazonSession = requests.Session()
         # https://www.amazon.com/gp/delivery/ajax/address-change.html
         self.amazonSession.headers = {
@@ -44,8 +44,16 @@ class zoro_amazon:
             print('open filein file')
             self.filein = open('./filein.txt', 'r')
         row = self.filein.readline()
+        flag = False
         while row != '':
-            yield row.strip().split("\t")
+            # yield row.strip().split("\t")
+            tmp = row.strip().split("\t")
+            if tmp[0]=='G8938221':
+                flag = True
+            if flag == False:
+                row = self.filein.readline()
+                continue
+            yield tmp
             row = self.filein.readline()
     # 写
     def writeData(self, dataList):
@@ -69,8 +77,17 @@ class zoro_amazon:
         fileout.close()
     # zoro爬虫
     def zoro(self, sku):
-        ret = self.zoroSession.get('https://www.zoro.com/product/?products={}'.format(sku))
-        # print(ret.status_code, ret.text)
+        i = 0
+        while True:
+            i += 1
+            try:
+                ret = self.zoroSession.get('https://www.zoro.com/product/?products={}'.format(sku))
+                break
+            except:
+                print('zoro() error',sku)
+            if i == 3:
+                return 0, 0
+            time.sleep(3)
         ret = ret.json()
         return float(ret['products'][0]['price']), int(ret['products'][0]['validation']['minOrderQuantity'])
     
@@ -78,7 +95,18 @@ class zoro_amazon:
     def amazon(self, sku):
         priceList = []
         sellerList = []
-        response = self.amazonSession.get('https://www.amazon.com/gp/offer-listing/{}/ref=olp_f_new?f_new=true'.format(sku))
+        i = 0
+        while True:
+            i += 1
+            try:
+                response = self.amazonSession.get('https://www.amazon.com/gp/offer-listing/{}/ref=olp_f_new?f_new=true'.format(sku))
+                break
+            except:
+                print('amazon() error,',sku)
+            if i == 3:
+                return 0, 'error'
+            time.sleep(3)
+                
         if response.status_code != 200:
             self.debug += 'amazon_get_error:' + str(response.status_code) + ';'
             return False, False
