@@ -2,24 +2,28 @@ import requests
 import time
 from lxml import etree
 import helper
+import sys
 
 class zoro_amazon:
 
     def __init__(self):
+        # print(sys.argv)
+        # exit()
         self.config()
-        self.filein = open('./filein_10000.txt', 'r')  # filein_10000.txt
+        # self.filein = open('./filein_10000.txt', 'r')  # filein_10000.txt
+        self.filein = open('./Untitled-1.txt', 'r')  # filein_10000.txt
         self.fileout = False
         self.specalSeller = ['VPSupply']
-        self.amazonProxy = []
         # 阈值
-        self.writeLimit = 10
+        self.writeLimit = 20
         # 延时
-        self.sleepTime = 5
-        self.main()
+        self.sleepTime = 0.1
+        self.amazon_main()
 
     def __del__(self):
-        if self.filein != False:
-            self.filein.close()
+        pass
+        # if self.filein != False:
+        #     self.filein.close()
         # if self.fileout != False:
         #     self.fileout.close()
     
@@ -38,7 +42,7 @@ class zoro_amazon:
             'accecp': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
             'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
             'accept-encoding': 'gzip, deflate, br',
-            'referer': 'https://www.amazon.com/dp/B00YSRG3K2/'
+            'referer': 'https://www.amazon.com/'
         }
         # 设置邮编 91770 92620
         self.USzipcode = '92620'
@@ -51,15 +55,21 @@ class zoro_amazon:
             'cdn-session', 'AK-5e5ac67bed838d072293bb7470707953')
         self.aSession.cookies.set(
             'csm-hit', 'tb:s-R3KDF4Q21GW4P18K12G8|1579336506593&t:1579336507469&adb:adblk_yes')
+        
+        proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
+            "host" : 'http-proxy-t3.dobel.cn',
+            "port" : 9180,
+            "user" : 'MOOZIKHJ5ALMR20',
+            "pass" : 'uQ2BJSE9',
+        }
+        self.aSession.proxies = {
+            'http':proxyMeta,
+            'https':proxyMeta
+        }
         # tb:K26VQTG66CA8BAPPF0HX+s-6TST51X5TYE05BXPCCE1|1579336490948&t:1579336490948&adb:adblk_yes
         # tb:s-R3KDF4Q21GW4P18K12G8|1579336506593&t:1579336507469&adb:adblk_yes
 
     def amazonGet(self, url):
-        # if self.amazonProxy == []:
-        #     self.amazonProxy = helper.get_proxy_list()
-        # if self.amazonProxy == []:
-        #     print('proxy get error')
-        #     exit()
         headers = {
             'user-agent': helper.get_user_agent(),
         }
@@ -78,70 +88,38 @@ class zoro_amazon:
         row = self.filein.readline()
         flag = False
         while row.strip() != '':
-            # yield row.strip().split("\t")
             tmp = row.strip().split("\t")
-            
-            if tmp[0] == 'G8494491':
-                flag = True
-            if flag == False:
-                row = self.filein.readline()
-                continue
+            # if tmp[0] == 'G9178849':
+            #     flag = True
+            # if flag == False:
+            #     row = self.filein.readline()
+            #     continue
 
             # 列数为2是异常状态
             if len(tmp) == 2:
                 print(','.join(tmp),'error')
+                row = self.filein.readline()
                 continue
             yield tmp
             row = self.filein.readline()
+        self.filein.close()
+    
     # 写
-    def writeData(self, dataList):
-        print('open fileout file')
-        column_list = [
-            'rid',
-            'zoro_id',
-            'amazon_id',
-            'zoro_price',
-            'in_stock',
-            'package',
-            'zoro_new_price',
-            'amazon_price',
-            'best_price',
-            'quant',
-
-            'time',
-            'amazon_seller',
-            'debug'
-        ]
-        # format_string = "{}\t" * len(column_list)
-        # format_string = format_string.strip()
-
-        format_string = ''
-        for i in range(len(column_list)):
-            format_string += "{0["+str(i)+"]}\t"
-        format_string = format_string.strip()
-        # print(format_string)
-        fileout = open('./fileout.txt', 'a')
-        for item in dataList:
-            # print(item)
-            # print(item.values())
-            # print(list(item.values()))
-            fileout.write(format_string.format(
-                list(item.values())
-                # item['rid'],
-                # item['zoro_id'],
-                # item['amazon_id'],
-                # item['zoro_price'],
-                # item['in_stock'],
-                # item['package'],
-                # item['zoro_new_price'],
-                # item['amazon_price'],
-                # item['best_price'],
-                # item['quant'],
-
-                # item['time'],
-                # item['amazon_seller'],
-                # item['debug']
-            ) + "\n")
+    def writeData(self, dataList, filepath = './fileout.txt'):
+        # print('open fileout file')
+        fileout = open(filepath, 'a', encoding = 'utf-8')
+        if type(dataList) == list and len(dataList) > 0:
+            # 为列表
+            if type(dataList[0]) == dict:
+                # 列表中为字典
+                for item in dataList:
+                    fileout.write("\t".join(map(str, list(item.values()))) + "\n")
+            else:
+                # 单行列表数据
+                fileout.write("\t".join(map(str, dataList)) + "\n")
+        if type(dataList) == str:
+            # 文本数据直接写
+            fileout.write(dataList)
         fileout.close()
     # zoro爬虫
     def zoro(self, sku):
@@ -172,55 +150,64 @@ class zoro_amazon:
                 break
             except:
                 print('amazon() error,',sku)
-            if i == 3:
-                return 0, 'error'
-            time.sleep(3)
+            if i == 2:
+                return 0, False
+            time.sleep(5)
 
         if response.status_code != 200:
-            print('amazon status_code:', response.status_code)
+            print('amazon status_code:', response.status_code,sku)
             self.debug += 'a_get_err:' + str(response.status_code) + ';'
-            time.sleep(20)
+            time.sleep(5)
             return False, False
         else:
             if 'Try a different refinement' in response.text:
-                print('amazon get:Try a different refinement')
+                print('amazon get:Try a different refinement',sku)
+                return False, False
 
         tree = etree.HTML(response.text)
         tableList = tree.xpath('//div[contains(@class,"olpOffer")]')
         self.debug += 'a_con:' + str(len(tableList) - 1) + ';'
         for rowTree in tableList:
             # price
+            # //div[contains(@class,"olpOffer")]/div[1]/span/text()
             price = rowTree.xpath('div[1]/span/text()')
             if price == []:
                 continue
             price = price[0].strip('$ ').replace(',','')
             # shippingPrice
+            # //div[contains(@class,"olpOffer")]/div[1]/p/span/span[@class="olpShippingPrice"]/text()
             shippingPrice = rowTree.xpath('div[1]/p/span/span[@class="olpShippingPrice"]/text()')
             if shippingPrice == []:
                 shippingPrice = 0
             else:
                 shippingPrice = shippingPrice[0].strip('$ ').replace(',','')
-            priceList.append(float(price) + float(shippingPrice))
-            # Seller Information
+            try:
+                priceList.append(float(price) + float(shippingPrice))
+            except ValueError as err:
+                print('ValueError', sku)
+                continue
+            # pc 经销商
             sellerInfo = rowTree.xpath('div[4]/h3/span/a/text()')
             if sellerInfo == []:
-                # sellerList.append('')
-                # //div[contains(@class,"olpOffer")]/div[2]/div[1]/div[1]/span/text()
-                # //div[contains(@class,"olpOffer")]/div[2]/div[1]/div[contains(@class,"olpSellerName")]/span/text()
-                # 手机
+                # mobile 经销商 amazon 经销商
                 sellerInfo = rowTree.xpath('div[2]/div[1]/div[contains(@class,"olpSellerName")]/span/text()')
+                if sellerInfo == []:
+                    # pc amazon为经销商
+                    sellerInfo = rowTree.xpath('div[4]/h3/img/@alt')
+
             if sellerInfo == []:
                 sellerList.append('')
             else:
                 sellerInfo = sellerInfo[0].strip()
                 sellerList.append(sellerInfo)
         
-        if len(priceList) != len(sellerList) or '' in sellerList:
+        if len(priceList) != len(sellerList):
             # log debug
-            print(sku, "len(priceList) != len(sellerList) or '' in sellerList")
-            self.writePageLog(sku+'.htm', response.content)
+            print("len(priceList) != len(sellerList)", sku)
+            self.writePageLog(sku + '.htm', response.content)
 
         if priceList == []:
+            print("priceList==[]", sku)
             return False, False
         else:
             amazon_price = min(priceList)
@@ -233,33 +220,42 @@ class zoro_amazon:
     # 获取zoro库存
     def zoroInstock(self,dataList):
         postData = str([x['zoro_id'] for x in dataList]).replace("'",'"')
-        r = self.zoroSession.post('https://www.zoro.com/avl/', data = postData)
-        if r.status_code != 200 or r.text.strip() == '':
-            r = requests.post('https://www.zoro.com/avl/', data=postData)
-        jsonList = r.json()
+        try:
+            r = self.zoroSession.post('https://www.zoro.com/avl/', data = postData)
+            if r.status_code != 200 or r.text.strip() == '':
+                time.sleep(5)
+                r = self.zoroSession.post('https://www.zoro.com/avl/', data=postData)
+            jsonList = r.json()
+        except:
+            return False
         for item in dataList:
             item['in_stock'] = float(jsonList[item['zoro_id']][2])
             # 当in_stock >= 2 时 quant = 1
             if item['in_stock'] >= 2:
                 item['quant'] = 1
+        return True
 
     # 主进程
-    def main(self):
+    def amazon_main(self):
         ret = []
         count = 0
         for item in self.inputData():
             time.sleep(self.sleepTime)
             self.debug = ''
-            time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            # time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             count += 1
             print(count, item)
             zoro_id = item[0]
             rid = item[1]
             amazon_id = item[2]
-            zoro_price, package = self.zoro(zoro_id)
-            zoro_new_price = zoro_price * package * 1.35 + 5
+            # zoro_price, package = self.zoro(zoro_id)
+            # zoro_new_price = zoro_price * package * 1.35 + 5
             amazon_price, amazon_seller = self.amazon(amazon_id)
+            if amazon_seller == False:
+                self.writeData(item, './fileout_amazon_error.txt')
+                continue
             # amazon价格为空 使用zoro价格
+            '''
             if amazon_price == False:
                 amazon_price = zoro_price
                 self.debug += 'a_price=None;'
@@ -280,33 +276,41 @@ class zoro_amazon:
                 if amazon_price < (zoro_price * 1.8 + 5):
                     best_price = zoro_price * 1.8 + 5
                     self.debug += 'mode=3;'
+            '''
             ret.append({
-                'rid': rid,
-
-                'zoro_id': zoro_id,
-                'amazon_id': amazon_id,
-                'zoro_price': round(zoro_price, 2),
-                'in_stock': 0,
-                'package': package,
-                # zoro new price
-                'zoro_new_price': round(zoro_new_price, 2),
-                # ASIN Price
+                'zoro_id' : zoro_id,
+                'rid' : rid,
+                'amazon_id' : amazon_id,
                 'amazon_price': round(amazon_price, 2),
-                #比较后价格
-                'best_price': round(best_price, 2),
-                # 计算new price = zoro_price * 1.35 + 5
-                'quant': 0,
-
-                'time': time_now,
-                'amazon_seller':amazon_seller,
-                'debug':self.debug
+                'amazon_seller' : amazon_seller
             })
+            # ret.append({
+            #     'rid': rid,
+
+            #     'zoro_id': zoro_id,
+            #     'amazon_id': amazon_id,
+            #     'zoro_price': round(zoro_price, 2),
+            #     'in_stock': 'n',
+            #     'package': package,
+            #     # zoro new price
+            #     'zoro_new_price': round(zoro_new_price, 2),
+            #     # ASIN Price
+            #     'amazon_price': round(amazon_price, 2),
+            #     #比较后价格
+            #     'best_price': round(best_price, 2),
+            #     # 计算new price = zoro_price * 1.35 + 5
+            #     'quant': 'n',
+
+            #     'time': time_now,
+            #     'amazon_seller':amazon_seller,
+            #     'debug':self.debug
+            # })
             if len(ret) == self.writeLimit:
-                print('len(ret) == ' + str(self.writeLimit))
-                self.zoroInstock(ret)
+            #     print('len(ret) == ' + str(self.writeLimit))
+            #     ret = self.zoroInstock(ret)
                 self.writeData(ret)
                 ret = []
-        self.zoroInstock(ret)
+        # self.zoroInstock(ret)
         self.writeData(ret)
         ret = []
 
