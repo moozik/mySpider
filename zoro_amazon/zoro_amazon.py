@@ -4,6 +4,7 @@ from lxml import etree
 import helper
 import sys
 import asyncio
+import aiohttp
 
 class zoro_amazon:
 
@@ -23,6 +24,8 @@ class zoro_amazon:
         pass
     
     def config(self):
+        pass
+        '''
         self.zoroSession = requests.Session()
         self.zoroSession.headers = {
             'User-Agent': helper.get_user_agent()
@@ -63,7 +66,7 @@ class zoro_amazon:
         }
         # tb:K26VQTG66CA8BAPPF0HX+s-6TST51X5TYE05BXPCCE1|1579336490948&t:1579336490948&adb:adblk_yes
         # tb:s-R3KDF4Q21GW4P18K12G8|1579336506593&t:1579336507469&adb:adblk_yes
-
+        '''
     def writePageLog(self, name, data):
         f = open(name,'wb')
         f.write(data)
@@ -130,13 +133,14 @@ class zoro_amazon:
         return float(ret['products'][0]['price']), int(ret['products'][0]['validation']['minOrderQuantity'])
     
     # amazon 爬虫
-    def amazon(self, sku):
+    async def amazon(self, sku):
         priceList = []
         sellerList = []
         i = 0
         while True:
             i += 1
             try:
+                ## todo
                 response = self.aSession.get(
                     'https://www.amazon.com/gp/offer-listing/{}/ref=olp_f_new?f_new=true'.format(sku),
                     headers = {'user-agent': helper.get_user_agent()})
@@ -238,21 +242,23 @@ class zoro_amazon:
             self.writeData(self.write_list, filepath)
             self.write_list = []
 
-    # 主进程
+    # 主进程 发起异步任务
     def amazon_main(self, generate):
         self.specal_seller = ['VPSupply']
         # 阈值
         self.write_limit = 3
+        # 计数
+        self.count = 0
         # 延时
         self.sleep_time = 3
-        self.count = 0
+        # 待写入列表
         self.write_list = []
 
         loop = asyncio.get_event_loop()
         tasks = [self.amazon_loop(generate, i) for i in range(2)]
         loop.run_until_complete(asyncio.wait(tasks))
         loop.close()
-    
+    # 异步任务循环
     async def amazon_loop(self, generate, number):
         for item in generate:
             time.sleep(self.sleep_time)
